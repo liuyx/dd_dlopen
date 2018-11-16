@@ -146,7 +146,7 @@ static ElfW(Addr) get_elf_load_bias(const ElfW(Ehdr)* elf) {
 
 	for (const ElfW(Phdr)* phdr = phdr_table; phdr < phdr_end; phdr++) {
 		if (phdr->p_type == PT_LOAD) {
-			return reinterpret_cast<ElfW(Addr)>(elf) + phdr->p_offset - phdr->p_vaddr;
+			return phdr->p_offset - phdr->p_vaddr;
 		}
 	}
 	return 0;
@@ -247,7 +247,7 @@ void* dd_dlsym(void* handle, const char *sym) {
 
 	for (int i = 0; i < context->dynSymCnt; i++, symtab++) {
 		if (strcmp(strtab + symtab->st_name, sym) == 0) {
-			return reinterpret_cast<void*>(reinterpret_cast<long>(context->load_addr) + symtab->st_value);
+			return reinterpret_cast<void*>(reinterpret_cast<long>(context->load_addr) + symtab->st_value + load_bias);
 		}
 	}
 	return nullptr;
