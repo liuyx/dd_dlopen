@@ -6,5 +6,3 @@
 
 很多开源库是解析Section Header，这个是不准的，因为Section Header是可以做手脚的
 另外这里，解析符号，利用了gnu_hash, 或者dt_hash快速查找相应的符号。
-
-不过，目前对于bloom filter还有点小问题，但是不妨碍该库正确工作.
