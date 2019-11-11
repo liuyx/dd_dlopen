@@ -156,8 +156,9 @@ struct Context {
     uint32_t* chain_;
 
     uint32_t gnu_nbucket_;
-    uint32_t gnu_sym_offset;
     uint32_t gnu_maskwords_;
+	uint32_t gnu_shift2_;
+    uint32_t gnu_sym_offset;
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
     size_t strtab_size_;
@@ -243,6 +244,7 @@ void* dd_dlopen(const char *filePath) {
                 context->gnu_nbucket_ = reinterpret_cast<uint32_t*>(load_bias + d->d_un.d_ptr)[0];
                 context->gnu_sym_offset = reinterpret_cast<uint32_t*>(load_bias + d->d_un.d_ptr)[1];
                 context->gnu_maskwords_ = reinterpret_cast<uint32_t*>(load_bias + d->d_un.d_ptr)[2];
+				context->gnu_shift2_ = reinterpret_cast<uint32_t*>(load_bias + d->d_un.d_ptr)[3];
 
                 context->gnu_bloom_filter_ = reinterpret_cast<ElfW(Addr)*>(load_bias + d->d_un.d_ptr + 16);
                 context->gnu_bucket_ = reinterpret_cast<uint32_t*>(context->gnu_bloom_filter_ + context->gnu_maskwords_);
@@ -326,6 +328,13 @@ uint32_t gnu_hash(const char* name_arg) {
 bool gnu_lookup(Context* context, const char* symbol_name,
                         uint32_t* symbol_index) {
     const uint32_t hash = gnu_hash(symbol_name);
+	const uint32_t h2 = hash >> context->gnu_shift2;
+	const uint32_t bloom_mask_bits = sizeof(ElfW(Addr)) * 8;
+	uint32_t word_num = (hash / bloom_mask_bits) & context->gnu_maskwords_;
+	ElfW(Addr) bloom_word = context->gnu_bloom_filter_[word_num];
+	if ( (1 & (bloom_word >> (hash % bloom_mask_bits)) & (bloom_word >> (h2 % bloom_mask_bits))) == 0) {
+		return false;
+	}
 
     const uint32_t nbuckets = context->gnu_nbucket_;
     const uint32_t offset = context->gnu_sym_offset;
